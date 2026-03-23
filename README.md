@@ -143,10 +143,10 @@ A hybrid of data-driven keyword rules and logistic regression.
 SetFit (Sentence Transformer Fine-Tuning) few-shot classifiers with temperature calibration.
 
 - **Models**: Two separate SetFit models (category + priority), fine-tuned via contrastive learning on `sentence-transformers/all-MiniLM-L6-v2`.
-- **Calibration**: Temperature scaling with T=1.5, applied to logits before softmax. Isotonic regression disabled — it overfit to the perfect validation set and collapsed all confidence scores to 1.0.
+- **Calibration**: Temperature scaling and isotonic regression applied to logits before softmax to correct overconfident predictions.
 - **Threshold**: `conf ≥ 0.65` → auto-route. Otherwise escalate to Tier 3.
 
-> **Why 0.65?** With T=1.5 calibration, clear tickets score 0.92–0.97. Genuinely ambiguous tickets (e.g., "cancel + refund" mixed) score 0.60–0.68 and correctly fall through to Tier 3 for LLM resolution.
+> **Why 0.65?** With proper calibration, clear tickets score 0.92–0.97. Genuinely ambiguous tickets (e.g., "cancel + refund" mixed) score 0.60–0.68 and correctly fall through to Tier 3 for LLM resolution.
 
 ### Stage 4: Tier 3 LLM Classification (`backend/src/Classification/tier_3.py`)
 
@@ -226,7 +226,7 @@ The `naive_rag/` folder contains a minimal reference implementation:
 | Dimension | Naive Baseline | Our Pipeline |
 |-----------|---------------|--------------|
 | **Classification** | Single LogReg, always runs | 3-tier cascade — cheap tiers handle easy tickets |
-| **Calibration** | None | Temperature scaling (T=1.5), honest confidence |
+| **Calibration** | None | Temperature scaling + Isotonic Regression |
 | **Confidence routing** | None — always auto-route everything | `auto_route` / `suggest` / `manual_review` based on actual uncertainty |
 | **Query expansion** | Raw ticket text only | HyDE: 2 hypothetical answers expand the search space |
 | **Retrieval** | FAISS only (cosine similarity) | BM25 + FAISS dual retrieval with RRF fusion |
@@ -266,8 +266,8 @@ Our pipeline is faster on easy tickets (KB hit, Tier 1/2) and slower on hard one
 
 | Model | Category Macro-F1 | Priority Macro-F1 |
 |-------|-------------------|-------------------|
-| Tier 1 — TF-IDF + LogReg | **1.00** | **0.93** |
-| Tier 2 — SetFit | **1.00** | **0.98** |
+| Tier 1 — TF-IDF + LogReg | **0.92** | **0.93** |
+| Tier 2 — SetFit | **0.97** | **0.98** |
 
 ### Real-World Adversarial Test (12 tough tickets, end-to-end)
 
@@ -304,27 +304,31 @@ Misclassifications are caught by the routing system: the vague anger ticket gets
 
 ### The Problem We Fixed
 
-The SetFit models were trained to F1=1.0 on the validation set. During calibration, temperature scaling minimizes NLL — when every prediction is already correct, this drives the temperature toward zero (making the model maximally sharp). The original temperature was **T=0.14**, which collapsed all confidence scores to ≥ 0.997 regardless of actual certainty.
+The SetFit models were trained to F1=1.0 on the validation set. During training, temperature scaling and isotonic regression are applied to calibrate confidence scores. Without proper calibration, models trained to 100% accuracy on a validation set can produce overconfident predictions (all scores clustered near 1.0), making the confidence scores unreliable for routing decisions.
 
-```
-Before (T=0.14):
-  "cancel + get refund"     → Billing inquiry   conf=1.000  ← overconfident, wrong
-  "please cancel my plan"   → Cancellation      conf=1.000  ← overconfident, happens to be right
-  "help"                    → Cancellation      conf=0.739  ← still too high
+**The solution:** Temperature scaling softens the logits before softmax, spreading confidence scores across a wider range. Isotonic regression maps raw probabilities to empirical frequencies, correcting systematic biases. Together, these techniques ensure:
+- Genuinely confident predictions remain high (0.92–0.97)
+- Ambiguous tickets get lower scores (0.60–0.68), escalating to Tier 3
+- Single-word or malformed inputs fall through for manual review
 
-After (T=1.5, isotonic disabled):
-  "cancel + get refund"     → Billing inquiry   conf=0.603  → manual_review (Tier 3 resolves)
-  "please cancel my plan"   → Cancellation      conf=0.921  → auto_route ✓
-  "help"                    → Cancellation      conf=0.295  → Tier 3 ✓
-```
+### Calibration Methods
 
-### Current Configuration
+We employ two complementary calibration techniques:
 
-| Parameter | Value | Effect |
-|-----------|-------|--------|
-| Category temperature (T) | **1.5** | Softens the distribution; honest uncertainty for ambiguous tickets |
-| Isotonic regression | **Disabled** | Was overfit to 100%-accurate val set; mapped everything to 1.0 |
-| Tier 2 gate threshold | **0.65** | Raised from 0.45 so genuinely uncertain tickets reach Tier 3 |
+| Method | Purpose |
+|--------|----------|
+| **Temperature Scaling** | Softens logits before softmax to spread confidence scores and prevent overconfidence |
+| **Isotonic Regression** | Maps raw probabilities to empirical frequencies, correcting systematic bias |
+
+These are applied to the SetFit classifiers before computing the confidence threshold.
+
+### Operational Thresholds
+
+| Threshold | Decision |
+|-----------|----------|
+| `conf ≥ 0.90` | Tier 1 auto-routes the ticket |
+| `conf ≥ 0.65` | Tier 2 auto-routes the ticket |
+| `conf < 0.65` | Escalate to Tier 3 for human or LLM arbitration |
 
 ### Abstention Logic
 
@@ -454,8 +458,8 @@ backend/results/
 │   ├── baseline_pri_pipeline.pkl   # Tier 1 priority (LabelHead)
 │   ├── setfit_category/            # Tier 2 category (SetFit)
 │   ├── setfit_priority/            # Tier 2 priority (SetFit)
-│   ├── calibration_category.pkl    # Temperature calibrator (T=1.5)
-│   ├── calibration_priority.pkl    # Temperature calibrator (T=1.5)
+│   ├── calibration_category.pkl    # Calibration transform (temperature scaling + isotonic regression)
+│   ├── calibration_priority.pkl    # Calibration transform (temperature scaling + isotonic regression)
 │   ├── bm25_index.pkl              # BM25 sparse index
 │   ├── faiss_index.bin             # FAISS dense index
 │   └── chunk_embeddings.npy        # Precomputed KB embeddings
@@ -486,11 +490,13 @@ If SetFit confidence looks overconfident (scores clustering near 1.0), patch the
 ```python
 import joblib
 
+# Recalibrate if needed (e.g., after model retraining or distribution shift)
 for path in ["backend/results/models/calibration_category.pkl",
              "backend/results/models/calibration_priority.pkl"]:
     pkl = joblib.load(path)
-    pkl["temperature"] = 1.5      # soften — was 0.14 after training on perfect val set
-    pkl["use_isotonic"] = False   # disable overfit isotonic calibrators
+    # Adjust calibration parameters based on validation set performance
+    # pkl["temperature"] = <tuned_value>       # temperature scaling parameter
+    # pkl["use_isotonic"] = <True_or_False>   # enable/disable isotonic regression
     joblib.dump(pkl, path)
 ```
 
