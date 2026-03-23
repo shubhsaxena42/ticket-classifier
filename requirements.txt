@@ -1,0 +1,25 @@
+flask==3.0.3
+pandas==2.2.1
+# scikit-learn: exact pin to match training-time pickle compatibility
+scikit-learn==1.6.1
+joblib==1.3.2
+setfit==1.0.3
+# sentence-transformers 5.x requires transformers>=4.41.0; we upgrade transformers to match
+sentence-transformers>=5.2.3
+groq>=0.11.0
+# spacy 3.7.x uses pydantic.v1 shim which breaks on Python 3.12 (ForwardRef._evaluate).
+# 3.8.0+ uses pydantic v2 natively and is compatible with Python 3.12.
+spacy>=3.8.0
+pydantic>=2.7.0
+numpy==1.26.4
+scipy==1.12.0
+# transformers: must be >=4.41.0 to satisfy sentence-transformers 5.x
+transformers>=4.41.0,<5.0.0
+# huggingface-hub 0.24+ removed DatasetFilter which setfit 1.0.3 model_card.py needs.
+huggingface-hub>=0.23.5,<0.25.0
+datasets>=2.14.0,<3.0.0
+rank-bm25>=0.2.2
+faiss-cpu>=1.8.0
+pytest>=8.0.0
+ragas>=0.1.20
+langgraph>=0.2.0

@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cascade Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-base: #0f172a;
+            --surface: #1e293b;
+            --surface-hover: #334155;
+            --border: #334155;
+            --primary: #8b5cf6;
+            --primary-hover: #a78bfa;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            width: 100%;
+            padding: 2rem 0;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(30,41,59,0.5) 0%, rgba(15,23,42,0) 100%);
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 2rem;
+        }
+
+        h1 {
+            font-weight: 600;
+            font-size: 2rem;
+            margin: 0;
+            background: -webkit-linear-gradient(45deg, #c4b5fd, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1100px;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            margin-bottom: 4rem;
+        }
+
+        @media(min-width: 768px) {
+            .container { grid-template-columns: 1fr 1fr; }
+            .full-width { grid-column: 1 / -1; }
+        }
+
+        .card {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-header h2 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            margin: 0;
+        }
+
+        textarea {
+            width: 100%;
+            background-color: #0f172a;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            outline: none;
+            transition: all 0.2s ease;
+            resize: vertical;
+            height: 120px;
+            font-family: inherit;
+        }
+
+        textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover { background-color: var(--primary-hover); transform: translateY(-1px); }
+        button:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            margin-top: 12px;
+        }
+        .btn-secondary:hover { background-color: var(--surface-hover); color: var(--text-main); }
+
+        .file-upload-label {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            padding: 40px 20px;
+            background-color: #0f172a;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+            margin-bottom: 16px;
+        }
+
+        .file-upload-label:hover, .file-upload-label.dragover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background-color: rgba(139, 92, 246, 0.05);
+        }
+
+        input[type="file"] { display: none; }
+
+        .loader-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(139, 92, 246, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .result-box {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #0f172a;
+            border: 1px solid var(--border);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .tag-category { background-color: rgba(16,185,129,0.1); color: var(--success); border: 1px solid rgba(16,185,129,0.2); }
+        .tag-priority { background-color: rgba(245,158,11,0.1); color: var(--warning); border: 1px solid rgba(245,158,11,0.2); }
+        .tag-tier { background-color: rgba(139,92,246,0.1); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.2); }
+        .tag-route { background-color: rgba(59,130,246,0.1); color: var(--info); border: 1px solid rgba(59,130,246,0.2); }
+        .tag-abstain { background-color: rgba(239,68,68,0.1); color: var(--error); border: 1px solid rgba(239,68,68,0.2); }
+
+        .section-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            margin-top: 16px;
+        }
+
+        .section-label:first-child { margin-top: 0; }
+
+        .draft-response {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: var(--text-main);
+            white-space: pre-wrap;
+        }
+
+        .sources-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sources-list li {
+            padding: 6px 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sources-list li::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .meta-row strong { color: var(--text-main); }
+
+        .error-message {
+            display: none;
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            background-color: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            font-size: 0.9rem;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Batch table */
+        .batch-table-wrap {
+            overflow-x: auto;
+            margin-top: 8px;
+        }
+
+        .batch-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .batch-table th {
+            background-color: var(--surface);
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-size: 0.7rem;
+            padding: 10px 12px;
+            text-align: left;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .batch-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(51,65,85,0.5);
+            color: var(--text-main);
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .batch-table tr:hover td { background-color: rgba(139,92,246,0.03); }
+
+        .batch-summary {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .batch-summary strong { color: var(--text-main); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1><i data-lucide="brain-circuit"></i> Cascade Intelligence</h1>
+        <div class="subtitle">3-Tier Classification + RAG-Grounded Response Generation</div>
+    </header>
+
+    <div class="container">
+        <!-- Single Ticket -->
+        <div class="card">
+            <div class="card-header">
+                <i data-lucide="message-square-text" style="color: var(--primary)"></i>
+                <h2>Single Ticket Analysis</h2>
+            </div>
+            <textarea id="single-text" placeholder="Describe the customer issue here...&#10;&#10;e.g. 'I was charged twice for my subscription this month. Please refund the extra $25.'"></textarea>
+            <button id="btn-single"><i data-lucide="sparkles"></i> Analyze Ticket</button>
+
+            <div id="loader-single" class="loader-container">
+                <div class="spinner"></div>
+                <span style="color: var(--text-muted); font-size: 0.9rem;">Running pipeline: Scrub &rarr; Classify &rarr; Retrieve &rarr; Generate...</span>
+            </div>
+
+            <div id="result-single" class="result-box"></div>
+            <div id="error-single" class="error-message" style="display:none;"></div>
+        </div>
+
+        <!-- Batch CSV Upload -->
+        <div class="card">
+            <div class="card-header">
+                <i data-lucide="table-properties" style="color: var(--primary)"></i>
+                <h2>Batch CSV Analysis</h2>
+            </div>
+            <label class="file-upload-label" id="drop-zone">
+                <i data-lucide="upload-cloud" size="32"></i>
+                <span id="file-name">Click to browse or drag & drop CSV</span>
+            </label>
+            <input type="file" id="batch-file" accept=".csv" />
+            <button id="btn-batch"><i data-lucide="folder-output"></i> Process Batch</button>
+
+            <div id="loader-batch" class="loader-container">
+                <div class="spinner"></div>
+                <span style="color: var(--text-muted); font-size: 0.9rem;">Processing tickets... this may take a moment</span>
+            </div>
+
+            <div id="result-batch" class="result-box"></div>
+            <div id="error-batch" class="error-message" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // ── Helpers ──────────────────────────────────────────────
+        function showError(el, message) {
+            el.innerHTML = '<i data-lucide="alert-circle" size="18"></i> ' + escapeHtml(message);
+            el.style.display = 'flex';
+            lucide.createIcons();
+        }
+        function hideError(el) { el.style.display = 'none'; }
+        function pct(n) { return (n * 100).toFixed(1) + '%'; }
+        function escapeHtml(s) {
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        // ── Render single ticket result ─────────────────────────
+        function renderSingleResult(pred) {
+            const box = document.getElementById('result-single');
+
+            let html = '';
+
+            // Ticket ID
+            if (pred.ticket_id && pred.ticket_id !== 'adhoc_text') {
+                html += '<div class="section-label">Ticket ID</div>';
+                html += '<div style="font-size:0.9rem;color:var(--text-main);margin-bottom:8px;">' + escapeHtml(pred.ticket_id) + '</div>';
+            }
+
+            // Tags row
+            html += '<div class="tags">';
+            html += '<span class="tag tag-category"><i data-lucide="tag" size="14"></i> ' + escapeHtml(pred.predicted_category) + '</span>';
+            html += '<span class="tag tag-priority"><i data-lucide="flag" size="14"></i> ' + escapeHtml(pred.predicted_priority) + '</span>';
+            html += '<span class="tag tag-tier"><i data-lucide="layers" size="14"></i> ' + escapeHtml(pred.tier_used || 'unknown') + '</span>';
+            html += '<span class="tag tag-route"><i data-lucide="route" size="14"></i> ' + escapeHtml(pred.routing_action) + '</span>';
+            if (pred.abstain_flag) {
+                html += '<span class="tag tag-abstain"><i data-lucide="shield-alert" size="14"></i> Abstained</span>';
+            }
+            html += '</div>';
+
+            // Draft response
+            html += '<div class="section-label">Draft Response</div>';
+            html += '<div class="draft-response">' + escapeHtml(pred.draft_response || 'No response generated.') + '</div>';
+
+            // Sources
+            const sources = (pred.top_3_retrieved_sources || '').split('|').filter(s => s.trim());
+            if (sources.length > 0) {
+                html += '<div class="section-label">Retrieved Sources</div>';
+                html += '<ul class="sources-list">';
+                sources.forEach(function(src, i) {
+                    const cited = (pred.citations || '').split('|').includes(String(i));
+                    const label = cited ? ' (cited)' : '';
+                    html += '<li>' + escapeHtml(src) + '<span style="color:var(--primary);font-size:0.75rem;">' + label + '</span></li>';
+                });
+                html += '</ul>';
+            }
+
+            // Meta row
+            html += '<div class="meta-row">';
+            html += '<span>Confidence: <strong>' + pct(pred.confidence_score) + '</strong></span>';
+            html += '<span>Retrieval Score: <strong>' + (pred.retrieval_max_score || 0).toFixed(3) + '</strong></span>';
+            if (pred.citations) {
+                html += '<span>Citations: <strong>' + escapeHtml(pred.citations) + '</strong></span>';
+            }
+            html += '</div>';
+
+            box.innerHTML = html;
+            box.style.display = 'block';
+            lucide.createIcons();
+        }
+
+        // ── Render batch result table ───────────────────────────
+        function renderBatchResult(results) {
+            const box = document.getElementById('result-batch');
+            const cols = ['ticket_id', 'predicted_category', 'predicted_priority', 'confidence_score', 'tier_used', 'routing_action', 'abstain_flag', 'top_3_retrieved_sources', 'draft_response'];
+
+            let html = '<div class="batch-summary">Processed <strong>' + results.length + '</strong> tickets</div>';
+
+            // Download button
+            html += '<button class="btn-secondary" id="btn-download"><i data-lucide="download" size="16"></i> Download predictions.csv</button>';
+
+            html += '<div class="batch-table-wrap" style="margin-top:16px;">';
+            html += '<table class="batch-table"><thead><tr>';
+            html += '<th>#</th>';
+            cols.forEach(function(c) { html += '<th>' + c.replace(/_/g, ' ') + '</th>'; });
+            html += '</tr></thead><tbody>';
+
+            results.forEach(function(row, idx) {
+                html += '<tr>';
+                html += '<td>' + (idx + 1) + '</td>';
+                cols.forEach(function(c) {
+                    let val = row[c];
+                    if (c === 'confidence_score' && typeof val === 'number') val = pct(val);
+                    else if (c === 'abstain_flag') val = val ? 'Yes' : 'No';
+                    else if (c === 'draft_response' && val && val.length > 80) val = val.substring(0, 80) + '...';
+                    else if (c === 'top_3_retrieved_sources' && val && val.length > 60) val = val.substring(0, 60) + '...';
+                    html += '<td title="' + escapeHtml(String(row[c] || '')) + '">' + escapeHtml(String(val || '')) + '</td>';
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table></div>';
+
+            box.innerHTML = html;
+            box.style.display = 'block';
+            lucide.createIcons();
+
+            // Wire up download
+            document.getElementById('btn-download').addEventListener('click', function() {
+                downloadCSV(results);
+            });
+        }
+
+        function downloadCSV(results) {
+            if (!results || results.length === 0) return;
+            const allCols = ['ticket_id', 'predicted_category', 'predicted_priority', 'top_3_retrieved_sources', 'draft_response', 'confidence_score', 'abstain_flag', 'citations', 'tier_used', 'routing_action', 'retrieval_max_score'];
+            let csv = allCols.join(',') + '\n';
+            results.forEach(function(row) {
+                const line = allCols.map(function(c) {
+                    let v = String(row[c] != null ? row[c] : '');
+                    if (v.includes(',') || v.includes('"') || v.includes('\n')) {
+                        v = '"' + v.replace(/"/g, '""') + '"';
+                    }
+                    return v;
+                });
+                csv += line.join(',') + '\n';
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'predictions.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ── Single Ticket ───────────────────────────────────────
+        const btnSingle = document.getElementById('btn-single');
+        const textSingle = document.getElementById('single-text');
+
+        btnSingle.addEventListener('click', async function() {
+            const text = textSingle.value.trim();
+            if (!text) return;
+
+            hideError(document.getElementById('error-single'));
+            document.getElementById('result-single').style.display = 'none';
+            document.getElementById('loader-single').style.display = 'flex';
+            btnSingle.disabled = true;
+
+            try {
+                const response = await fetch('/predict_text', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    renderSingleResult(data.prediction);
+                } else {
+                    throw new Error(data.error || 'Server error');
+                }
+            } catch (err) {
+                showError(document.getElementById('error-single'), err.message);
+            } finally {
+                document.getElementById('loader-single').style.display = 'none';
+                btnSingle.disabled = false;
+            }
+        });
+
+        // ── Batch CSV ───────────────────────────────────────────
+        const btnBatch = document.getElementById('btn-batch');
+        const fileInput = document.getElementById('batch-file');
+        const fileNameLabel = document.getElementById('file-name');
+        const dropZone = document.getElementById('drop-zone');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function(ev) {
+            dropZone.addEventListener(ev, function(e) { e.preventDefault(); e.stopPropagation(); }, false);
+        });
+        ['dragenter', 'dragover'].forEach(function(ev) {
+            dropZone.addEventListener(ev, function() { dropZone.classList.add('dragover'); }, false);
+        });
+        ['dragleave', 'drop'].forEach(function(ev) {
+            dropZone.addEventListener(ev, function() { dropZone.classList.remove('dragover'); }, false);
+        });
+
+        dropZone.addEventListener('drop', function(e) {
+            fileInput.files = e.dataTransfer.files;
+            updateFileName();
+        });
+        dropZone.addEventListener('click', function() { fileInput.click(); });
+        fileInput.addEventListener('change', updateFileName);
+
+        function updateFileName() {
+            if (fileInput.files.length > 0) {
+                fileNameLabel.textContent = fileInput.files[0].name;
+                fileNameLabel.style.color = 'var(--text-main)';
+            } else {
+                fileNameLabel.textContent = 'Click to browse or drag & drop CSV';
+                fileNameLabel.style.color = 'var(--text-muted)';
+            }
+        }
+
+        btnBatch.addEventListener('click', async function() {
+            if (fileInput.files.length === 0) {
+                showError(document.getElementById('error-batch'), 'Please select a CSV file first.');
+                return;
+            }
+
+            hideError(document.getElementById('error-batch'));
+            document.getElementById('result-batch').style.display = 'none';
+            document.getElementById('loader-batch').style.display = 'flex';
+            btnBatch.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            try {
+                const response = await fetch('/predict_batch', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    renderBatchResult(data.results);
+                } else {
+                    throw new Error(data.error || 'Server error');
+                }
+            } catch (err) {
+                showError(document.getElementById('error-batch'), err.message);
+            } finally {
+                document.getElementById('loader-batch').style.display = 'none';
+                btnBatch.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
